@@ -182,9 +182,12 @@ module "keyvault_flexvolume_role" {
 module "flex_volume" {
   source = "modules/azure/keyvault_flexvol"
 }
+```
 
 Limitations:
 - Modifying the terraform output files.
 - Added complexity with symlink alias which prevents ease of simply running terraform commands on native machine
+
 ### 2.4 Native Terraform Plugins
+
 - TBD
