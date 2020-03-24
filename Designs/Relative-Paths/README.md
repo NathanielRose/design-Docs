@@ -1,5 +1,10 @@
 # Relative Paths for Bedrock Terraform Infrastructure
 
+| Revision | Date         | Author         | Remarks                                |
+| -------: | ------------ | -------------- | -------------------------------------- |
+|      0.1 | Mar-23, 2020 | Nathaniel Rose | Initial Draft                          |
+
+
 
 ## 1. Overview
 
@@ -14,6 +19,10 @@ module "servers" {
   servers = 5
 }
 ```
+
+### Issues Addressed:
+1. As an SRE, I want to use module sources that are versioned and localalized to the terraform templates repo.
+2. As an Operator, I want automated CI pipelines that can handle internal references for incoming PR that modify my custom Bedrock modules.
 
 ## 2. Solutions
 
@@ -34,7 +43,7 @@ Error: Unreadable module directory
 Unable to evaluate directory symlink: lstat ../../azure: no such file or
 directory
 ```
-### 2.1 Mung together URL with relative Path in SPK Generate
+### 2.1 Munge together URL with relative Path in SPK Generate
 
 One option to address this issue is to directly modify the generated `.tf` files to reflect the respective module source. Inside the  `infra generate` command we can use the `source`, `version`, and `template` values to modify the terraform child module source to a remote module source for terraform to download upon initialization.
 

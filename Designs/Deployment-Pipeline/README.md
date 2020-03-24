@@ -1,6 +1,12 @@
 # Continuous Deployment Guidelines for Terraform Infrastructure
 
 
+| Revision | Date         | Author         | Remarks                                |
+| -------: | ------------ | -------------- | -------------------------------------- |
+|      0.1 | Mar-16, 2020 | Nathaniel Rose | Initial Draft                          |
+
+
+
 ## 1. Overview
 
 It is highly desireable to have a fully-automated CI/CD system in place to assist with testing and validation of source code changes made to the application services and supporting infrastructure. Without such a system, it is difficult to have any degree of confidence that a new deployment will succeed without introducing new regressions.
