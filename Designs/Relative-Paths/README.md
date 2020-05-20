@@ -1,16 +1,22 @@
 # Relative Paths for Bedrock Terraform Infrastructure
 
-| Revision | Date         | Author         | Remarks                                |
-| -------: | ------------ | -------------- | -------------------------------------- |
-|      0.1 | Mar-23, 2020 | Nathaniel Rose | Initial Draft                          |
-
-
+| Revision | Date         | Author         | Remarks                     |
+| -------: | ------------ | -------------- | --------------------------- |
+|      0.1 | Mar-23, 2020 | Nathaniel Rose | Initial Draft               |
+|      0.2 | Mar-26, 2020 | Nathaniel Rose | Changes Reflected from Team |
 
 ## 1. Overview
 
-Terraform modules use a source parameter to locate the resource module target to download in order to initialize a terraform environment for deployment. A module can call other modules, which lets you include the child module's resources into the configuration in a concise way. Modules can also be called multiple times, either within the same configuration or in separate configurations, allowing resource configurations to be packaged and re-used.
+Terraform modules use a source parameter to locate the resource module target to
+download in order to initialize a terraform environment for deployment. A module
+can call other modules, which lets you include the child module's resources into
+the configuration in a concise way. Modules can also be called multiple times,
+either within the same configuration or in separate configurations, allowing
+resource configurations to be packaged and re-used.
 
-This document outlines multiple solution that seeks to validate alternative ways in which relative paths for child module may be supported in Bedrock implementation and the SPK cli tooling. 
+This document outlines multiple solution that seeks to validate alternative ways
+in which relative paths for child module may be supported in Bedrock
+implementation and the Bedrock CLI tooling.
 
 ```
 module "servers" {
@@ -20,36 +26,54 @@ module "servers" {
 }
 ```
 
+This design shall only target supporting relative paths in Bedrock CLI
+scaffolding and generation.
+
 ### Issues Addressed:
-1. As an SRE, I want to use module sources that are versioned and localalized to the terraform templates repo.
-2. As an Operator, I want automated CI pipelines that can handle internal references for incoming PR that modify my custom Bedrock modules.
 
-## 2. Solutions
+1. As an SRE, I want to use module sources that are versioned and localized to
+   the terraform templates repo.
+2. As an Operator, I want automated CI pipelines that can handle internal
+   references for incoming PR that modify my custom Bedrock modules.
 
-An existing pull request for Bedrock currently exists that verifies relative path implementation with the use of Bedrock Provided Templates in [#1189](https://github.com/microsoft/bedrock/pull/1189). This design document seeks to propose interoperability of the relative paths with SPK tooling and adjustment of infrastructure pipeline. 
+## 2. Solution
 
-In the current implementation on SPK infra practices, the tool is embedded into a generation pipeline that provisions terraform files respective to the modified infra HLD. `spk infra generate` provisions a terraform deployment template files based on the key values provided in the target directory's `definition.yaml`. If the `source` template in the `definition.yaml` uses relative paths in respects to the source, `infra generate` command will produce a terraform file with the module source out of scope from the provisioned terraform files.
+In the current implementation on Bedrock CLI infra practices, the tool is
+embedded into a generation pipeline that provisions terraform files respective
+to the modified infra HLD. `bedrock infra generate` provisions a terraform
+deployment template files based on the key values provided in the target
+directory's `definition.yaml`. If the `source` template in the `definition.yaml`
+uses relative paths in respects to the source, `infra generate` command will
+produce a terraform file with the module source out of scope from the
+provisioned terraform files.
 
-When executing a `terraform init` on the generated deployment files it produces an error similar to the following:
+When executing a `terraform init` on the generated deployment files it produces
+an error similar to the following:
 
 ```
 Initializing modules...
-- aks-gitops in 
-- provider in 
-- vnet in 
+- aks-gitops in
+- provider in
+- vnet in
 
 Error: Unreadable module directory
 
 Unable to evaluate directory symlink: lstat ../../azure: no such file or
 directory
 ```
-### 2.1 Munge together URL with relative Path in SPK Generate
 
-One option to address this issue is to directly modify the generated `.tf` files to reflect the respective module source. Inside the  `infra generate` command we can use the `source`, `version`, and `template` values to modify the terraform child module source to a remote module source for terraform to download upon initialization.
+### 2.1 Munge together URL with relative Path in Bedrock `infra generate` - **ACCEPTED DESIGN**
+
+One option to address this issue is to directly modify the generated `.tf` files
+to reflect the respective module source. Inside the `infra generate` command we
+can use the `source`, `version`, and `template` values to modify the terraform
+child module source to a remote module source for terraform to download upon
+initialization.
 
 Example:
 
 **`Definition.yaml`**
+
 ```
 name: fabrikam
 source: "https://github.com/Microsoft/bedrock.git"
@@ -60,10 +84,13 @@ version: nate.infra.relative.paths
 .
 ```
 
-Use a function to get the module path from root of remote repo in cached directory. (`pathFunction`)
->  source= ~~https://~~`source`?ref=`version`//`pathFunction()`"
+Use a function to get the module path from root of remote repo in cached
+directory. (`pathFunction`)
+
+> source= ~~https://~~`source`?ref=`version`//`pathFunction()`"
 
 **Output `Main.tf`**
+
 ```
 terraform {
   backend "azurerm" {}
@@ -100,12 +127,37 @@ module "flex_volume" {
 }
 ```
 
-Limitations:
-- Manipulating user input data and output terraform files
-- 
-### 2.2 Copy Modules to Alternative Configured Generated Directory
+## 3. Dependencies
 
-Another option is to copy modules from cached remote directory to the generated folder. This allows SPK to directly reference the parent module source with the generated terraform templates. In addition, this would also require the templates to be placed accordingly in respects to relative paths to parent modules. In Bedrock, the template folders are 3 levels down (../../../cluster/azure/keyvault_flex_vol")
+An existing pull request for Bedrock currently exists that verifies relative
+path implementation with the use of Bedrock Provided Templates in
+[#1189](https://github.com/microsoft/bedrock/pull/1189). This design document
+seeks to propose interoperability of the relative paths with Bedrock CLI tooling
+and adjustment of infrastructure pipeline.
+
+## 4. Risks & Mitigations
+
+Limitations to the solution include:
+
+- Manipulating user input data and output terraform files
+- Potential Regex parsing for URL validation to detect relative paths
+
+## 5. Documentation
+
+Yes. A brief update to the
+[`bedrock-infra-generation-pipeline.md`](/guides/infra/bedrock-infra-generation-pipeline.md)
+detailing relative path support for module sources.
+
+## 6. Alternatives
+
+### 6.1 Copy Modules to Alternative Configured Generated Directory
+
+Another option is to copy modules from cached remote directory to the generated
+folder. This allows Bedrock CLI to directly reference the parent module source
+with the generated terraform templates. In addition, this would also require the
+templates to be placed accordingly in respects to relative paths to parent
+modules. In Bedrock, the template folders are 3 levels down
+(../../../cluster/azure/keyvault_flex_vol")
 
 ```
 fabrikam/
@@ -144,19 +196,25 @@ fabrikam-generated/
 ```
 
 Limitations:
-- Very coupled to current organization of Bedrock and will have breaking changes when introducing new folders at template /module levels
+
+- Very coupled to current organization of Bedrock and will have breaking changes
+  when introducing new folders at template /module levels
 - Copying modules twice local to agent, once for cache and again during generate
 
+### 6.2 Use a symlink to reference the modules
 
-### 2.3 Use a symlink to reference the modules
-
-A symbolic link, also termed a soft link, is a special kind of file that points to another file, much like a shortcut in Windows or a Macintosh alias. This will allow generate the alias the cached repo for all `spk infra generate` commands.
+A symbolic link, also termed a soft link, is a special kind of file that points
+to another file, much like a shortcut in Windows or a Macintosh alias. This will
+allow generate the alias the cached repo for all `bedrock infra generate`
+commands.
 
 `ln -s modules /path/to/modules`
 
-Inside of spk, the terraform files will now reference the symlink which is cached.
+Inside of bedrock, the terraform files will now reference the symlink which is
+cached.
 
 **Output `Main.tf`**
+
 ```
 terraform {
   backend "azurerm" {}
@@ -194,9 +252,7 @@ module "flex_volume" {
 ```
 
 Limitations:
+
 - Modifying the terraform output files.
-- Added complexity with symlink alias which prevents ease of simply running terraform commands on native machine
-
-### 2.4 Native Terraform Plugins
-
-- TBD
+- Added complexity with symlink alias which prevents ease of simply running
+  terraform commands on native machine
